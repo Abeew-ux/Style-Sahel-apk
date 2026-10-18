@@ -1,0 +1,26 @@
+{
+  "name": "Sahel AKD Suivi",
+  "short_name": "Sahel AKD",
+  "description": "Suivi de vos livraisons Sahel AKD",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#06050b",
+  "theme_color": "#06050b",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "sahel-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "sahel-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
