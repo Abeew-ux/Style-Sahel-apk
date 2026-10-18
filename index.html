@@ -130,7 +130,7 @@ const T = {
     updated: 'Mis à jour à', offline: 'Pas de connexion : les informations affichées peuvent être anciennes.',
     modeQ: 'Comment voulez-vous recevoir votre colis ?', modeToChoose: 'À choisir : ', modeLivreur: 'Avec livreur', modeRetrait: 'Je viens le chercher',
     modeChosenLivreur: 'Votre choix : un livreur vous apporte le colis.', modeChosenRetrait: 'Votre choix : vous venez chercher le colis.',
-    modeSaved: 'Votre choix est enregistré.', modeLate: 'Trop tard : le colis est déjà en livraison.', proof: 'Preuve de livraison',
+    modeSaved: 'Votre choix est enregistré.', modeLate: 'Trop tard : le colis est déjà en livraison.', proof: 'Preuve de livraison', photo: 'Photo du colis',
     st: { enregistre: 'Enregistré', pris_en_charge: 'Pris en charge', en_transit: 'En transit', en_livraison: 'En livraison', livre: 'Livré', annule: 'Annulé' }
   },
   ha: {
@@ -144,7 +144,7 @@ const T = {
     updated: 'An sabunta da', offline: 'Babu intanet : abin da ke nuni zai iya zama tsoho.',
     modeQ: 'Yaya kake so ka karɓi kayanka?', modeToChoose: 'Zaɓi : ', modeLivreur: 'Tare da mai kai kaya', modeRetrait: 'Zan zo in karɓa',
     modeChosenLivreur: 'Zaɓinka : mai kai kaya zai kawo maka kayan.', modeChosenRetrait: 'Zaɓinka : za ka zo ka karɓi kayan da kanka.',
-    modeSaved: 'An adana zaɓinka.', modeLate: 'Ya makara : an riga an fara kai kayan.', proof: 'Hoton shaidar isarwa',
+    modeSaved: 'An adana zaɓinka.', modeLate: 'Ya makara : an riga an fara kai kayan.', proof: 'Hoton shaidar isarwa', photo: 'Hoton kayan',
     st: { enregistre: 'An yi rajista', pris_en_charge: 'An karɓi kayan', en_transit: 'Kayan yana kan hanya', en_livraison: 'Ana kai maka kayan', livre: 'An kawo kayan', annule: 'An soke' }
   }
 };
@@ -240,6 +240,7 @@ function livCard(l) {
   return `<article class="card st-${esc(l.statut)}">
     <div class="row"><span class="ref">${esc(t('ref'))} ${esc(l.reference)}</span><span class="badge">${esc(stLabel(l.statut))}</span></div>
     <p class="desc">${esc(l.description)}</p>
+    ${l.photo ? `<a class="proof" href="${esc(PREUVES + l.photo)}" target="_blank" rel="noopener"><small>${esc(t('photo'))}</small><img src="${esc(PREUVES + l.photo)}" alt="${esc(t('photo'))}" loading="lazy"></a>` : ''}
     <div class="route"><div><small>${esc(t('from'))}</small>${esc(l.depart)}</div><span class="dots"></span><div style="text-align:right"><small>${esc(t('to'))}</small>${esc(l.destination)}</div></div>
     ${steps}
     <div class="meta">
