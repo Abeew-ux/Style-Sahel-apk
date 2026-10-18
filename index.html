@@ -104,12 +104,29 @@ a.proof small{display:block;color:var(--sable);font-size:11.5px;margin-bottom:4p
 .proof img{display:block;width:auto;max-width:100%;max-height:130px;object-fit:contain;border-radius:10px;border:1px solid var(--line);background:var(--s2)}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:50;background:#211d28;border:1px solid var(--or);color:var(--ivoire);padding:10px 16px;border-radius:12px;max-width:90%;display:none;font-size:14px}
 #toast.err{border-color:var(--bad)}
+header .right{display:flex;align-items:center;gap:10px}
+.bell{position:relative;background:none;border:1px solid var(--line);border-radius:999px;width:38px;height:38px;color:var(--or2);display:grid;place-items:center;padding:0}
+.bell svg{width:19px;height:19px}
+.bell b{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+.backdrop{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:560px;max-height:84vh;overflow:auto;background:var(--s1);border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;padding:16px 14px calc(16px + env(safe-area-inset-bottom))}
+.sheet h3{margin:0 0 10px;font:600 20px var(--serif);color:var(--or2)}
+.sheet .line-btn{width:100%;margin-top:10px}
+.msgs{list-style:none;margin:0;padding:0}
+.msgs li{border:1px solid var(--line);border-left:3px solid var(--st,var(--or3));border-radius:10px;background:var(--s2);padding:8px 11px;margin-bottom:6px}
+.msgs li.new{border-color:var(--or);border-left-color:var(--st,var(--or))}
+.msgs p{margin:0;font-size:14.5px}
+.msgs small{display:block;margin-top:2px;color:var(--sable);font-size:12px}
+.msgs .from{color:var(--or2);font-size:12px;font-weight:600;margin:0 0 2px}
+.alerts{margin:0 0 10px;font-size:13px;color:var(--sable)}
+.alerts .line-btn{margin-top:6px}
 body.plain{background:var(--nuit)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 <div id="app"></div>
+<div id="panel"></div>
 <div id="toast" role="status"></div>
 <script>
 const SB_URL = 'https://cetbspgxsqbaousqrara.supabase.co';
@@ -130,6 +147,9 @@ const T = {
     updated: 'Mis à jour à', offline: 'Pas de connexion : les informations affichées peuvent être anciennes.',
     modeQ: 'Comment voulez-vous recevoir votre colis ?', modeToChoose: 'À choisir : ', modeLivreur: 'Avec livreur', modeRetrait: 'Je viens le chercher',
     modeChosenLivreur: 'Votre choix : un livreur vous apporte le colis.', modeChosenRetrait: 'Votre choix : vous venez chercher le colis.',
+    msgs: 'Messages', noMsg: 'Aucun message pour le moment.', newMsg: 'Nouveau message', close: 'Fermer',
+    alertsAsk: 'Activer les alertes sur cet appareil', alertsHint: 'Recevez une alerte dès qu’un message arrive (appli ouverte).', alertsOn: 'Alertes activées sur cet appareil.',
+    msgStatut: (ref, st) => `Votre colis ${ref} : ${st}`, fromSahel: 'Sahel AKD',
     modeSaved: 'Votre choix est enregistré.', modeLate: 'Trop tard : le colis est déjà en livraison.', proof: 'Preuve de livraison', photo: 'Photo du colis',
     st: { enregistre: 'Enregistré', pris_en_charge: 'Pris en charge', en_transit: 'En transit', en_livraison: 'En livraison', livre: 'Livré', annule: 'Annulé' }
   },
@@ -144,6 +164,9 @@ const T = {
     updated: 'An sabunta da', offline: 'Babu intanet : abin da ke nuni zai iya zama tsoho.',
     modeQ: 'Yaya kake so ka karɓi kayanka?', modeToChoose: 'Zaɓi : ', modeLivreur: 'Tare da mai kai kaya', modeRetrait: 'Zan zo in karɓa',
     modeChosenLivreur: 'Zaɓinka : mai kai kaya zai kawo maka kayan.', modeChosenRetrait: 'Zaɓinka : za ka zo ka karɓi kayan da kanka.',
+    msgs: 'Saƙonni', noMsg: 'Babu saƙo a yanzu.', newMsg: 'Sabon saƙo', close: 'Rufe',
+    alertsAsk: 'Kunna sanarwa a wannan wayar', alertsHint: 'Za ka samu sanarwa da zarar saƙo ya zo (idan an buɗe manhajar).', alertsOn: 'An kunna sanarwa a wannan wayar.',
+    msgStatut: (ref, st) => `Kayanka ${ref} : ${st}`, fromSahel: 'Sahel AKD',
     modeSaved: 'An adana zaɓinka.', modeLate: 'Ya makara : an riga an fara kai kayan.', proof: 'Hoton shaidar isarwa', photo: 'Hoton kayan',
     st: { enregistre: 'An yi rajista', pris_en_charge: 'An karɓi kayan', en_transit: 'Kayan yana kan hanya', en_livraison: 'Ana kai maka kayan', livre: 'An kawo kayan', annule: 'An soke' }
   }
@@ -151,7 +174,7 @@ const T = {
 const STEPS = ['enregistre', 'pris_en_charge', 'en_transit', 'en_livraison', 'livre'];
 const KEY_LANG = 'sahel_lang', KEY_SESSION = 'sahel_client';
 
-const S = { busy: false, lang: 'fr', tel: '', code: '', data: null, open: new Set(), showCode: false, offline: false, updatedAt: null, msg: '' };
+const S = { panel: false, known: new Set(), fresh: new Set(), busy: false, lang: 'fr', tel: '', code: '', data: null, open: new Set(), showCode: false, offline: false, updatedAt: null, msg: '' };
 let timer = null;
 
 const $ = s => document.querySelector(s);
@@ -217,6 +240,48 @@ function toast(msg, err) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.style.display = 'none'; }, 3600);
 }
 const EARLY = ['enregistre', 'pris_en_charge', 'en_transit'];
+const msgText = m => m.type === 'texte' ? (m.texte || '') : t('msgStatut')(m.reference || '', stLabel(m.statut));
+const nonLus = () => (S.data && S.data.messages ? S.data.messages.filter(m => !m.lu).length : 0);
+function badgeApp() {
+  const n = nonLus();
+  try { document.title = (n ? '(' + n + ') ' : '') + 'Sahel AKD Suivi'; } catch (e) { /* sans gravité */ }
+  try { if (navigator.setAppBadge) { n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } } catch (e) { /* sans gravité */ }
+}
+async function alerte(m) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const opts = { body: msgText(m), icon: 'sahel-icon-192.png', badge: 'sahel-icon-192.png', tag: 'sahel-' + m.id };
+  try {
+    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    if (reg && reg.showNotification) { await reg.showNotification('Sahel AKD', opts); return; }
+  } catch (e) { /* on essaie la méthode simple */ }
+  try { new Notification('Sahel AKD', opts); } catch (e) { /* sans gravité */ }
+}
+function reperer(r, premier) {
+  const nouveaux = (r.messages || []).filter(m => !m.lu && !S.known.has(m.id));
+  (r.messages || []).forEach(m => S.known.add(m.id));
+  if (premier || !nouveaux.length) return;
+  toast(t('newMsg') + ' : ' + msgText(nouveaux[0]));
+  nouveaux.slice(0, 3).forEach(alerte);
+}
+async function marquerLus() {
+  if (!S.data || !S.data.messages) return;
+  S.fresh = new Set(S.data.messages.filter(m => !m.lu).map(m => m.id));
+  if (!S.fresh.size) return;
+  S.data.messages = S.data.messages.map(m => Object.assign({}, m, { lu: true }));
+  try { await rpc(S.tel, S.code, 'sahel_client_lire_messages'); } catch (e) { /* sera refait à la prochaine ouverture */ }
+}
+function panelView() {
+  if (!S.panel || !S.data) return '';
+  const L = S.data.messages || [];
+  const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+  const alertes = perm === 'default' ? `<div class="alerts">${esc(t('alertsHint'))}<button class="line-btn" data-a="alerts">${esc(t('alertsAsk'))}</button></div>`
+    : perm === 'granted' ? `<p class="alerts">${esc(t('alertsOn'))}</p>` : '';
+  const items = L.map(m => `<li class="${m.type === 'statut' ? 'st-' + esc(m.statut) : ''} ${S.fresh.has(m.id) ? 'new' : ''}"><p class="from">${esc(t('fromSahel'))}</p><p>${esc(msgText(m))}</p><small>${fmtDT(m.created_at)}</small></li>`).join('');
+  return `<div class="backdrop" data-a="panel-close"><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(t('msgs'))}">
+    <h3>${esc(t('msgs'))}</h3>${alertes}
+    ${L.length ? `<ul class="msgs">${items}</ul>` : `<div class="empty">${esc(t('noMsg'))}</div>`}
+    <button class="line-btn" data-a="panel-close">${esc(t('close'))}</button></div></div>`;
+}
 function modeBlock(l) {
   if (EARLY.includes(l.statut)) {
     const m = l.mode_livraison;
@@ -257,7 +322,7 @@ function dashView() {
   const cur = L.filter(l => l.statut !== 'livre' && l.statut !== 'annule');
   const done = L.filter(l => l.statut === 'livre' || l.statut === 'annule');
   const upd = S.updatedAt ? `${t('updated')} ${S.updatedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : '';
-  return `<header><div class="wrap"><div class="brand"><img src="${EMBLEM}" alt=""><b>Sahel AKD</b></div>${langSwitch()}</div></header>
+  return `<header><div class="wrap"><div class="brand"><img src="${EMBLEM}" alt=""><b>Sahel AKD</b></div><div class="right"><button class="bell" data-a="panel-open" aria-label="${esc(t('msgs'))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>${nonLus() ? `<b>${nonLus()}</b>` : ''}</button>${langSwitch()}</div></div></header>
   <main class="wrap">
     <div class="hello"><h2>${esc(t('hello'))} <span>${esc(S.data.nom)}</span></h2><p>${esc(upd)}</p></div>
     <div class="bar"><button class="line-btn" data-a="refresh">${esc(t('refresh'))}</button><button class="line-btn" data-a="logout">${esc(t('logout'))}</button></div>
@@ -273,6 +338,8 @@ function render() {
   const keepTel = $('#tel') ? $('#tel').value : null;
   document.body.classList.toggle('plain', !S.data);
   $('#app').innerHTML = S.data ? dashView() : loginView();
+  $('#panel').innerHTML = panelView();
+  badgeApp();
   if (!S.data && keepTel != null) $('#tel').value = keepTel;
 }
 
@@ -280,12 +347,13 @@ function render() {
 function logout(msg) {
   stopPoll();
   S.data = null; S.code = ''; S.open = new Set(); S.offline = false; S.msg = msg || '';
+  S.panel = false; S.known = new Set(); S.fresh = new Set();
   store('del', KEY_SESSION);
   render();
 }
 function startPoll() {
   stopPoll();
-  timer = setInterval(() => { if (!document.hidden) refresh(true); }, 30000);
+  timer = setInterval(() => { if (!document.hidden) refresh(true); }, 20000);
 }
 function stopPoll() { if (timer) { clearInterval(timer); timer = null; } }
 
@@ -294,7 +362,10 @@ async function refresh(silent) {
   try {
     const r = await rpc(S.tel, S.code);
     if (!r.ok) { logout(r.erreur === 'bloque' ? t('blocked') : t('bad')); return; }
-    S.data = r; S.offline = false; S.updatedAt = new Date(); render();
+    reperer(r, false);
+    S.data = r; S.offline = false; S.updatedAt = new Date();
+    if (S.panel) await marquerLus();
+    render();
   } catch (e) {
     S.offline = true; render();
   }
@@ -310,6 +381,7 @@ async function doLogin(tel, code, remember, auto) {
       S.tel = tel; render(); return;
     }
     S.tel = tel; S.code = code; S.data = r; S.msg = ''; S.offline = false; S.updatedAt = new Date();
+    S.known = new Set(); reperer(r, true);
     if (remember) store('set', KEY_SESSION, JSON.stringify({ tel, code }));
     render(); startPoll();
   } catch (e) {
@@ -357,6 +429,9 @@ document.addEventListener('click', e => {
     $('#code').value = code; $('#rem').checked = rem;
   }
   else if (a === 'mode') choisirMode(el.dataset.ref, el.dataset.v);
+  else if (a === 'panel-open') { S.panel = true; marquerLus().then(render); render(); }
+  else if (a === 'panel-close') { if (e.target === el || el.tagName === 'BUTTON') { S.panel = false; S.fresh = new Set(); render(); } }
+  else if (a === 'alerts') { try { Notification.requestPermission().then(render, render); } catch (x) { render(); } }
   else if (a === 'logout') logout('');
   else if (a === 'refresh') refresh(false);
   else if (a === 'hist') {
