@@ -118,6 +118,11 @@ header .right{display:flex;align-items:center;gap:10px}
 .msgs p{margin:0;font-size:14.5px}
 .msgs small{display:block;margin-top:2px;color:var(--sable);font-size:12px}
 .msgs .from{color:var(--or2);font-size:12px;font-weight:600;margin:0 0 2px}
+.sonbtn{display:flex;align-items:center;gap:10px;width:100%;margin:0 0 10px;text-align:left}
+.sonbtn i{width:34px;height:20px;border-radius:10px;background:#2a2630;position:relative;flex:none;transition:background .15s}
+.sonbtn i:after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--sable);transition:transform .15s,background .15s}
+.sonbtn.on i{background:var(--or3)}
+.sonbtn.on i:after{transform:translateX(14px);background:var(--or2)}
 .alerts{margin:0 0 10px;font-size:13px;color:var(--sable)}
 .alerts .line-btn{margin-top:6px}
 body.plain{background:var(--nuit)}
@@ -148,7 +153,7 @@ const T = {
     modeQ: 'Comment voulez-vous recevoir votre colis ?', modeToChoose: 'À choisir : ', modeLivreur: 'Avec livreur', modeRetrait: 'Je viens le chercher',
     modeChosenLivreur: 'Votre choix : un livreur vous apporte le colis.', modeChosenRetrait: 'Votre choix : vous venez chercher le colis.',
     msgs: 'Messages', noMsg: 'Aucun message pour le moment.', newMsg: 'Nouveau message', close: 'Fermer',
-    alertsAsk: 'Activer les alertes sur cet appareil', alertsHint: 'Recevez une alerte dès qu’un message arrive (appli ouverte).', alertsOn: 'Alertes activées sur cet appareil.',
+    sonOn: 'Son activé', sonOff: 'Son désactivé', alertsAsk: 'Activer les alertes sur cet appareil', alertsHint: 'Recevez une alerte dès qu’un message arrive (appli ouverte).', alertsOn: 'Alertes activées sur cet appareil.',
     msgStatut: (ref, st) => `Votre colis ${ref} : ${st}`, fromSahel: 'Sahel AKD',
     modeSaved: 'Votre choix est enregistré.', modeLate: 'Trop tard : le colis est déjà en livraison.', proof: 'Preuve de livraison', photo: 'Photo du colis',
     st: { enregistre: 'Enregistré', pris_en_charge: 'Pris en charge', en_transit: 'En transit', en_livraison: 'En livraison', livre: 'Livré', annule: 'Annulé' }
@@ -165,16 +170,16 @@ const T = {
     modeQ: 'Yaya kake so ka karɓi kayanka?', modeToChoose: 'Zaɓi : ', modeLivreur: 'Tare da mai kai kaya', modeRetrait: 'Zan zo in karɓa',
     modeChosenLivreur: 'Zaɓinka : mai kai kaya zai kawo maka kayan.', modeChosenRetrait: 'Zaɓinka : za ka zo ka karɓi kayan da kanka.',
     msgs: 'Saƙonni', noMsg: 'Babu saƙo a yanzu.', newMsg: 'Sabon saƙo', close: 'Rufe',
-    alertsAsk: 'Kunna sanarwa a wannan wayar', alertsHint: 'Za ka samu sanarwa da zarar saƙo ya zo (idan an buɗe manhajar).', alertsOn: 'An kunna sanarwa a wannan wayar.',
+    sonOn: 'An kunna sauti', sonOff: 'An kashe sauti', alertsAsk: 'Kunna sanarwa a wannan wayar', alertsHint: 'Za ka samu sanarwa da zarar saƙo ya zo (idan an buɗe manhajar).', alertsOn: 'An kunna sanarwa a wannan wayar.',
     msgStatut: (ref, st) => `Kayanka ${ref} : ${st}`, fromSahel: 'Sahel AKD',
     modeSaved: 'An adana zaɓinka.', modeLate: 'Ya makara : an riga an fara kai kayan.', proof: 'Hoton shaidar isarwa', photo: 'Hoton kayan',
     st: { enregistre: 'An yi rajista', pris_en_charge: 'An karɓi kayan', en_transit: 'Kayan yana kan hanya', en_livraison: 'Ana kai maka kayan', livre: 'An kawo kayan', annule: 'An soke' }
   }
 };
 const STEPS = ['enregistre', 'pris_en_charge', 'en_transit', 'en_livraison', 'livre'];
-const KEY_LANG = 'sahel_lang', KEY_SESSION = 'sahel_client';
+const KEY_LANG = 'sahel_lang', KEY_SESSION = 'sahel_client', KEY_SON = 'sahel_son';
 
-const S = { panel: false, known: new Set(), fresh: new Set(), busy: false, lang: 'fr', tel: '', code: '', data: null, open: new Set(), showCode: false, offline: false, updatedAt: null, msg: '' };
+const S = { son: true, panel: false, known: new Set(), fresh: new Set(), busy: false, lang: 'fr', tel: '', code: '', data: null, open: new Set(), showCode: false, offline: false, updatedAt: null, msg: '' };
 let timer = null;
 
 const $ = s => document.querySelector(s);
@@ -242,6 +247,33 @@ function toast(msg, err) {
 const EARLY = ['enregistre', 'pris_en_charge', 'en_transit'];
 const msgText = m => m.type === 'texte' ? (m.texte || '') : t('msgStatut')(m.reference || '', stLabel(m.statut));
 const nonLus = () => (S.data && S.data.messages ? S.data.messages.filter(m => !m.lu).length : 0);
+let audioCtx = null;
+function debloquerAudio() {
+  try {
+    if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) { /* sans gravité */ }
+}
+// Les navigateurs n'autorisent le son qu'après un premier appui de la personne
+document.addEventListener('pointerdown', debloquerAudio, { passive: true });
+function sonner() {
+  if (!S.son) return;
+  debloquerAudio();
+  const c = audioCtx;
+  if (!c || c.state !== 'running') return;
+  try {
+    [[880, 0], [1318.5, 0.16]].forEach(([f, d]) => {
+      const o = c.createOscillator(), g = c.createGain(), t0 = c.currentTime + d;
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.28, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.55);
+      o.connect(g); g.connect(c.destination);
+      o.start(t0); o.stop(t0 + 0.6);
+    });
+  } catch (e) { /* sans gravité */ }
+  try { if (navigator.vibrate) navigator.vibrate([120, 60, 120]); } catch (e) { /* sans gravité */ }
+}
 function badgeApp() {
   const n = nonLus();
   try { document.title = (n ? '(' + n + ') ' : '') + 'Sahel AKD Suivi'; } catch (e) { /* sans gravité */ }
@@ -249,7 +281,7 @@ function badgeApp() {
 }
 async function alerte(m) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  const opts = { body: msgText(m), icon: 'sahel-icon-192.png', badge: 'sahel-icon-192.png', tag: 'sahel-' + m.id };
+  const opts = { body: msgText(m), icon: 'sahel-icon-192.png', badge: 'sahel-icon-192.png', tag: 'sahel-' + m.id, vibrate: [120, 60, 120], silent: false };
   try {
     const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
     if (reg && reg.showNotification) { await reg.showNotification('Sahel AKD', opts); return; }
@@ -261,6 +293,7 @@ function reperer(r, premier) {
   (r.messages || []).forEach(m => S.known.add(m.id));
   if (premier || !nouveaux.length) return;
   toast(t('newMsg') + ' : ' + msgText(nouveaux[0]));
+  sonner();
   nouveaux.slice(0, 3).forEach(alerte);
 }
 async function marquerLus() {
@@ -278,7 +311,8 @@ function panelView() {
     : perm === 'granted' ? `<p class="alerts">${esc(t('alertsOn'))}</p>` : '';
   const items = L.map(m => `<li class="${m.type === 'statut' ? 'st-' + esc(m.statut) : ''} ${S.fresh.has(m.id) ? 'new' : ''}"><p class="from">${esc(t('fromSahel'))}</p><p>${esc(msgText(m))}</p><small>${fmtDT(m.created_at)}</small></li>`).join('');
   return `<div class="backdrop" data-a="panel-close"><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(t('msgs'))}">
-    <h3>${esc(t('msgs'))}</h3>${alertes}
+    <h3>${esc(t('msgs'))}</h3>
+    <button class="line-btn sonbtn ${S.son ? 'on' : ''}" data-a="son" role="switch" aria-checked="${S.son}"><i></i>${esc(S.son ? t('sonOn') : t('sonOff'))}</button>${alertes}
     ${L.length ? `<ul class="msgs">${items}</ul>` : `<div class="empty">${esc(t('noMsg'))}</div>`}
     <button class="line-btn" data-a="panel-close">${esc(t('close'))}</button></div></div>`;
 }
@@ -431,6 +465,7 @@ document.addEventListener('click', e => {
   else if (a === 'mode') choisirMode(el.dataset.ref, el.dataset.v);
   else if (a === 'panel-open') { S.panel = true; marquerLus().then(render); render(); }
   else if (a === 'panel-close') { if (e.target === el || el.tagName === 'BUTTON') { S.panel = false; S.fresh = new Set(); render(); } }
+  else if (a === 'son') { S.son = !S.son; store('set', KEY_SON, S.son ? '1' : '0'); render(); if (S.son) sonner(); }
   else if (a === 'alerts') { try { Notification.requestPermission().then(render, render); } catch (x) { render(); } }
   else if (a === 'logout') logout('');
   else if (a === 'refresh') refresh(false);
@@ -448,6 +483,7 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
 (function init() {
   const lg = store('get', KEY_LANG);
   if (lg === 'fr' || lg === 'ha') S.lang = lg;
+  if (store('get', KEY_SON) === '0') S.son = false;
   render();
   const raw = store('get', KEY_SESSION);
   if (raw) {
